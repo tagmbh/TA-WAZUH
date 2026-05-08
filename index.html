@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wazuh — Architecture & Components · T-Alpha Technical Introduction</title>
+<meta name="description" content="A walk-through of the Wazuh stack and where it sits inside a Blue-Team Operations stack — built for integration partners. By Ivan Stricker, T-Alpha GmbH.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ============================================================
+     SIDE RAIL — sticky progress nav
+============================================================ -->
+<aside class="rail" aria-label="Section navigation">
+  <a href="#top" class="rail-mark" aria-label="Top">
+    <img class="rail-logo" src="T-Alpha_nb.svg" alt="T-Alpha" />
+  </a>
+  <nav class="rail-nav">
+    <a href="#intro" data-section="intro"><span class="num">01</span><span class="lbl">Introduction</span></a>
+    <a href="#stack" data-section="stack"><span class="num">02</span><span class="lbl">Blue-Team Stack</span></a>
+    <a href="#architecture" data-section="architecture"><span class="num">03</span><span class="lbl">Architecture</span></a>
+    <a href="#server" data-section="server"><span class="num">04</span><span class="lbl">Server</span></a>
+    <a href="#indexer" data-section="indexer"><span class="num">05</span><span class="lbl">Indexer & Dashboard</span></a>
+    <a href="#agents" data-section="agents"><span class="num">06</span><span class="lbl">Agents & Modules</span></a>
+    <a href="#pipeline" data-section="pipeline"><span class="num">07</span><span class="lbl">Log Pipeline</span></a>
+    <a href="#decoders" data-section="decoders"><span class="num">08</span><span class="lbl">Decoders & Rules</span></a>
+    <a href="#fim" data-section="fim"><span class="num">09</span><span class="lbl">File Integrity</span></a>
+    <a href="#response" data-section="response"><span class="num">10</span><span class="lbl">Active Response</span></a>
+    <a href="#vuln" data-section="vuln"><span class="num">11</span><span class="lbl">Vulnerability</span></a>
+    <a href="#sca" data-section="sca"><span class="num">12</span><span class="lbl">SCA</span></a>
+    <a href="#ports" data-section="ports"><span class="num">13</span><span class="lbl">Comms & Ports</span></a>
+    <a href="#deploy" data-section="deploy"><span class="num">14</span><span class="lbl">Deployment</span></a>
+    <a href="#install" data-section="install"><span class="num">15</span><span class="lbl">Installation</span></a>
+    <a href="#summary" data-section="summary"><span class="num">16</span><span class="lbl">Summary</span></a>
+  </nav>
+  <div class="rail-foot">
+    <span class="mono">v4.12 · 2026</span>
+  </div>
+</aside>
+
+<!-- ============================================================
+     HERO
+============================================================ -->
+<section id="top" class="hero">
+  <div class="hero-grid"></div>
+  <header class="topbar">
+    <div class="brand">
+      <img class="brand-logo" src="T-Alpha_nb.svg" alt="T-Alpha GmbH" />
+      <span class="brand-tag mono">CYBER SECURITY · BUCHS SG</span>
+    </div>
+    <div class="topbar-meta mono">
+      <span class="dot live"></span>
+      <span>WAZUH · TECHNISCHE EINFÜHRUNG</span>
+    </div>
+  </header>
+
+  <div class="hero-inner">
+    <div class="hero-eyebrow mono">
+      <span class="line"></span>
+      <span>WAZUH / ARCHITECTURE & COMPONENTS</span>
+    </div>
+    <h1 class="hero-title">
+      <span class="reveal" data-delay="0">An open-source XDR &amp; SIEM,</span>
+      <span class="reveal" data-delay="120">explained for the people</span>
+      <span class="reveal" data-delay="240">who will <em>actually</em> deploy it.</span>
+    </h1>
+    <p class="hero-lede reveal" data-delay="420">
+      A walk-through of the Wazuh stack — agents, server, indexer, dashboard — and where it sits
+      inside a Blue-Team Operations stack. Built for integration partners.<br/>
+      <span class="hero-tagline mono">Den Angreifern einen Schritt voraus.</span>
+    </p>
+
+    <!-- Animated mini architecture preview -->
+    <div class="hero-canvas reveal" data-delay="560">
+      <svg class="hero-flow" viewBox="0 0 920 220" aria-hidden="true">
+        <defs>
+          <linearGradient id="flowGrad" x1="0" x2="1">
+            <stop offset="0%" stop-color="var(--accent)" stop-opacity="0"/>
+            <stop offset="50%" stop-color="var(--accent)" stop-opacity="1"/>
+            <stop offset="100%" stop-color="var(--accent)" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <!-- Connection lines -->
+        <path class="flow-path" d="M 130 110 L 330 110" />
+        <path class="flow-path" d="M 470 110 L 670 110" />
+        <path class="flow-path" d="M 810 110 L 810 110" />
+        <!-- Animated traveler -->
+        <circle class="flow-traveler" cx="0" cy="110" r="4" />
+        <circle class="flow-traveler-2" cx="0" cy="110" r="4" />
+      </svg>
+      <div class="hero-stages">
+        <div class="hero-stage" data-stage="agent">
+          <div class="stage-icon">
+            <span class="ring"></span>
+            <span class="core"></span>
+          </div>
+          <div class="stage-label">
+            <div class="stage-name">Agent</div>
+            <div class="stage-sub mono">endpoint</div>
+          </div>
+        </div>
+        <div class="hero-stage" data-stage="server">
+          <div class="stage-icon">
+            <span class="ring"></span>
+            <span class="core"></span>
+          </div>
+          <div class="stage-label">
+            <div class="stage-name">Server</div>
+            <div class="stage-sub mono">analysis</div>
+          </div>
+        </div>
+        <div class="hero-stage" data-stage="indexer">
+          <div class="stage-icon">
+            <span class="ring"></span>
+            <span class="core"></span>
+          </div>
+          <div class="stage-label">
+            <div class="stage-name">Indexer</div>
+            <div class="stage-sub mono">storage</div>
+          </div>
+        </div>
+        <div class="hero-stage" data-stage="dashboard">
+          <div class="stage-icon">
+            <span class="ring"></span>
+            <span class="core"></span>
+          </div>
+          <div class="stage-label">
+            <div class="stage-name">Dashboard</div>
+            <div class="stage-sub mono">UI / API</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="hero-foot reveal" data-delay="720">
+      <div class="hero-meta">
+        <span class="mono">MAY 2026</span>
+        <span class="sep">·</span>
+        <span class="mono">IVAN STRICKER</span>
+        <span class="sep">·</span>
+        <span class="mono">T-ALPHA GMBH</span>
+      </div>
+      <a class="scroll-cue mono" href="#intro">
+        scroll
+        <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+          <path d="M7 2 L7 12 M3 8 L7 12 L11 8" stroke="currentColor" fill="none" stroke-width="1.4"/>
+        </svg>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     SECTION 01 — WHAT IS WAZUH?
+============================================================ -->
+<section id="intro" class="section">
+  <div class="section-head">
+    <div class="section-tag mono"><span>01</span> Introduction</div>
+    <h2 class="section-title">What is Wazuh?</h2>
+    <p class="section-lede">
+      A free, open-source unified XDR + SIEM platform. Wazuh consolidates host-based intrusion detection,
+      log management, file integrity monitoring, vulnerability detection, configuration assessment and active
+      response — into a single agent and central analytics plane. <em>No per-EPS or per-GB licensing.</em>
+    </p>
+  </div>
+
+  <div class="stat-row">
+    <div class="stat-card" data-anim="counter">
+      <div class="stat-num"><span class="counter" data-to="4">0</span></div>
+      <div class="stat-cap mono">CORE COMPONENTS</div>
+      <div class="stat-detail">Agent · Server · Indexer · Dashboard</div>
+    </div>
+    <div class="stat-card" data-anim="counter">
+      <div class="stat-num"><span class="counter" data-to="4000" data-suffix="+">0</span></div>
+      <div class="stat-cap mono">DETECTION RULES</div>
+      <div class="stat-detail">Built-in, MITRE ATT&CK mapped</div>
+    </div>
+    <div class="stat-card" data-anim="counter">
+      <div class="stat-num"><span class="counter" data-to="10" data-suffix="+">0</span></div>
+      <div class="stat-cap mono">PLATFORMS</div>
+      <div class="stat-detail">Linux · Windows · macOS · AIX · Solaris · HP-UX · Docker · K8s · AWS · Azure · GCP</div>
+    </div>
+    <div class="stat-card" data-anim="counter">
+      <div class="stat-num"><span>0€</span></div>
+      <div class="stat-cap mono">LICENSING</div>
+      <div class="stat-detail">No per-EPS or per-GB charges. Open source, Apache 2.0.</div>
+    </div>
+  </div>
+
+  <div class="callout">
+    <div class="callout-tag mono">SOURCE</div>
+    <div>wazuh.com — official documentation</div>
+  </div>
+</section>
+
+<!-- ============================================================
+     SECTION 02 — BLUE-TEAM STACK
+============================================================ -->
+<section id="stack" class="section">
+  <div class="section-head">
+    <div class="section-tag mono"><span>02</span> Blue-Team Operations Stack</div>
+    <h2 class="section-title">Wazuh as the central XDR/SIEM in an open-source stack</h2>
+    <p class="section-lede">
+      Wazuh sits at the centre. Suricata feeds it network events; TheHive orchestrates incidents that
+      come out of it; Cortex analyses observables; MISP shares IOCs back upstream. Hover a node to trace
+      its connections.
+    </p>
+  </div>
+
+  <div class="stack-diagram">
+    <svg class="stack-svg" viewBox="0 0 900 460" aria-hidden="true">
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M0,0 L10,5 L0,10 z" fill="var(--rule)" />
+        </marker>
+        <marker id="arrow-active" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M0,0 L10,5 L0,10 z" fill="var(--accent)" />
+        </marker>
+      </defs>
+      <!-- Connection paths -->
+      <path class="stack-link" data-pair="suricata-wazuh" d="M 200 130 C 320 130, 350 220, 440 220" marker-end="url(#arrow)" />
+      <path class="stack-link" data-pair="wazuh-thehive" d="M 580 220 C 670 220, 700 130, 760 130" marker-end="url(#arrow)" />
+      <path class="stack-link" data-pair="thehive-cortex" d="M 760 180 C 760 240, 700 290, 660 320" marker-end="url(#arrow)" />
+      <path class="stack-link" data-pair="cortex-misp" d="M 540 360 C 440 360, 360 360, 280 360" marker-end="url(#arrow)" />
+      <path class="stack-link" data-pair="misp-wazuh" d="M 200 320 C 280 280, 360 250, 440 240" marker-end="url(#arrow)" />
+    </svg>
+
+    <button class="stack-node n-suricata" data-node="suricata" type="button">
+      <div class="node-cap mono">NETWORK IDS/IPS</div>
+      <div class="node-name">Suricata</div>
+      <div class="node-desc">Network event capture</div>
+    </button>
+    <button class="stack-node n-wazuh" data-node="wazuh" type="button">
+      <div class="node-cap mono">XDR / SIEM · CORE</div>
+      <div class="node-name">Wazuh</div>
+      <div class="node-desc">Detection · Correlation · Compliance</div>
+    </button>
+    <button class="stack-node n-thehive" data-node="thehive" type="button">
+      <div class="node-cap mono">SOAR / CASE MGMT</div>
+      <div class="node-name">TheHive</div>
+      <div class="node-desc">Incident orchestration</div>
+    </button>
+    <button class="stack-node n-cortex" data-node="cortex" type="button">
+      <div class="node-cap mono">ANALYSIS ENGINE</div>
+      <div class="node-name">Cortex</div>
+      <div class="node-desc">Observable analysis & response</div>
+    </button>
+    <button class="stack-node n-misp" data-node="misp" type="button">
+      <div class="node-cap mono">THREAT INTEL</div>
+      <div class="node-name">MISP</div>
+      <div class="node-desc">IOC sharing platform</div>
+    </button>
+  </div>
+
+  <div class="flow-narrative mono">
+    <span>Suricata</span><span class="arr">→</span>
+    <span class="hl">Wazuh</span><span class="arr">→</span>
+    <span>TheHive</span><span class="arr">→</span>
+    <span>Cortex</span><span class="arr">→</span>
+    <span>MISP</span>
+  </div>
+</section>
+
+<!-- ============================================================
+     SECTION 03 — ARCHITECTURE
+============================================================ -->
+<section id="architecture" class="section section-tinted">
+  <div class="section-head">
+    <div class="section-tag mono"><span>03</span> Architecture</div>
+    <h2 class="section-title">Four core components, one continuous data flow</h2>
+    <p class="section-lede">
+      A packet of telemetry travels from endpoint to operator screen in five hops. Click any step to focus the flow.
+    </p>
+  </div>
+
+  <div class="arch">
+    <div class="arch-flow">
+      <div class="arch-node" data-step="1">
+        <div class="arch-node-label">Wazuh Agent</div>
+        <div class="arch-node-sub">Endpoint collection</div>
+      </div>
+      <div class="arch-link" data-link="1-2">
+        <span class="arch-link-label mono">TCP 1514 · AES-256</span>
+      </div>
+      <div class="arch-node" data-step="2">
+        <div class="arch-node-label">Wazuh Server</div>
+        <div class="arch-node-sub">Decode + rules</div>
+      </div>
+      <div class="arch-link" data-link="2-3">
+        <span class="arch-link-label mono">Filebeat · TLS · TCP 9200</span>
+      </div>
+      <div class="arch-node" data-step="3">
+        <div class="arch-node-label">Wazuh Indexer</div>
+        <div class="arch-node-sub">Storage + search</div>
+      </div>
+      <div class="arch-link" data-link="3-4">
+        <span class="arch-link-label mono">REST · TCP 55000</span>
+      </div>
+      <div class="arch-node" data-step="4">
+        <div class="arch-node-label">Dashboard</div>
+        <div class="arch-node-sub">Visualisation + API</div>
+      </div>
+      <div class="arch-pulse"></div>
+    </div>
+
+    <ol class="arch-steps">
+      <li data-step="1">
+        <span class="step-tick mono">01</span>
+        <div>
+          <strong>Agent collects</strong> logs, FIM events and host telemetry on the endpoint.
+        </div>
+      </li>
+      <li data-step="1-2">
+        <span class="step-tick mono">02</span>
+        <div>
+          <strong>Encrypted upload</strong> to the server over TCP&nbsp;1514 (AES-256, blowfish optional).
+        </div>
+      </li>
+      <li data-step="2">
+        <span class="step-tick mono">03</span>
+        <div>
+          <strong>Server decodes</strong>, applies the ruleset and raises alerts (severity 0–15).
+        </div>
+      </li>
+      <li data-step="2-3">
+        <span class="step-tick mono">04</span>
+        <div>
+          <strong>Filebeat ships alerts</strong> to the Indexer over TLS (TCP&nbsp;9200).
+        </div>
+      </li>
+      <li data-step="3-4">
+        <span class="step-tick mono">05</span>
+        <div>
+          <strong>Dashboard renders</strong> data and drives the platform via REST API (TCP&nbsp;55000).
+        </div>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<!-- ============================================================
+     SECTION 04 — SERVER
+============================================================ -->
+<section id="server" class="section">
+  <div class="section-head">
+    <div class="section-tag mono"><span>04</span> Wazuh Server (Manager)</div>
+    <h2 class="section-title">Central element — analyses every event and triggers alerts</h2>
+  </div>
+
+  <div class="capability-grid">
+    <article class="capability">
+      <div class="cap-num mono">01</div>
+      <h3>Agent Registration</h3>
+      <p>Enrols new agents and distributes authentication keys.</p>
+      <code class="mono">authd · TCP 1515</code>
+    </article>
+    <article class="capability">
+      <div class="cap-num mono">02</div>
+      <h3>Agent Connection</h3>
+      <p>Receives data and validates identity.</p>
+      <code class="mono">TCP 1514</code>
+    </article>
+    <article class="capability">
+      <div class="cap-num mono">03</div>
+      <h3>Analysis Engine</h3>
+      <p>Decoders + rules drive event identification and processing.</p>
+      <code class="mono">analysisd</code>
+    </article>
+    <article class="capability">
+      <div class="cap-num mono">04</div>
+      <h3>RESTful API</h3>
+      <p>Programmatic interface to the Wazuh control plane.</p>
+      <code class="mono">TCP 55000</code>
+    </article>
+    <article class="capability">
+      <div class="cap-num mono">05</div>
+      <h3>Cluster Daemon</h3>
+      <p>Horizontal scaling in multi-node configurations.</p>
+      <code class="mono">TCP 1516</code>
+    </article>
+    <article class="capability">
+      <div class="cap-num mono">06</div>
+      <h3>Filebeat + Threat Intel</h3>
+      <p>Forwards events to the Indexer and matches IOCs against intel feeds.</p>
+      <code class="mono">filebeat · IOC match</code>
+    </article>
+  </div>
+</section>
+
+<!-- ============================================================
+     SECTION 05 — INDEXER & DASHBOARD
+============================================================ -->
+<section id="indexer" class="section">
+  <div class="section-head">
+    <div class="section-tag mono"><span>05</span> Indexer & Dashboard</div>
+    <h2 class="section-title">Storage, search and the operator interface</h2>
+  </div>
+
+  <div class="split">
+    <article class="split-card">
+      <header class="split-head">
+        <div class="split-cap mono">INDEXER</div>
+        <div class="split-port mono">OpenSearch · 9200/TCP</div>
+      </header>
+      <ul class="split-list">
+        <li>Stores all alerts and events from the server</li>
+        <li>Real-time full-text search over security data</li>
+        <li>RESTful API on TCP&nbsp;9200</li>
+        <li>Cluster transport on TCP&nbsp;9300–9400</li>
+        <li>Horizontally scalable (multi-node)</li>
+      </ul>
+    </article>
+    <article class="split-card">
+      <header class="split-head">
+        <div class="split-cap mono">DASHBOARD</div>
+        <div class="split-port mono">HTTPS · 443/TCP</div>
+      </header>
+      <ul class="split-list">
+        <li><strong>Visualization</strong> — built-in dashboards: PCI&nbsp;DSS, GDPR, CIS, HIPAA, NIST&nbsp;800-53</li>
+        <li><strong>Agent management</strong> — monitor, configure and upgrade agents</li>
+        <li><strong>Developer tooling</strong> — ruleset test, API console, custom views</li>
+      </ul>
+    </article>
+  </div>
+</section>
+
+<!-- ============================================================
+     SECTION 06 — AGENTS & MODULES
+============================================================ -->
+<section id="agents" class="section section-tinted">
+  <div class="section-head">
+    <div class="section-tag mono"><span>06</span> Agents & Modules</div>
+    <h2 class="section-title">Cross-platform agents, eight built-in modules</h2>
+    <p class="section-lede">
+      Linux · Windows · macOS · Solaris · AIX · HP-UX. Plus container and cloud collectors.
+      Agentless monitoring is supported via Syslog, SSH or API integration for appliances and unsupported OS targets.
+    </p>
+  </div>
+
+  <div class="modules">
+    <article class="module">
+      <div class="mod-glyph"><span class="g g-1"></span></div>
+      <h3>Log Collector</h3><p>OS and application logs.</p>
+    </article>
+    <article class="module">
+      <div class="mod-glyph"><span class="g g-2"></span></div>
+      <h3>FIM</h3><p>File integrity monitoring.</p>
+    </article>
+    <article class="module">
+      <div class="mod-glyph"><span class="g g-3"></span></div>
+      <h3>Rootcheck</h3><p>Rootkit & anomaly detection.</p>
+    </article>
+    <article class="module">
+      <div class="mod-glyph"><span class="g g-4"></span></div>
+      <h3>SCA</h3><p>Configuration assessment.</p>
+    </article>
+    <article class="module">
+      <div class="mod-glyph"><span class="g g-5"></span></div>
+      <h3>Syscollector</h3><p>Hardware / software inventory.</p>
+    </article>
+    <article class="module">
+      <div class="mod-glyph"><span class="g g-6"></span></div>
+      <h3>Active Response</h3><p>Automated countermeasures.</p>
+    </article>
+    <article class="module">
+      <div class="mod-glyph"><span class="g g-7"></span></div>
+      <h3>Docker / K8s</h3><p>Container security.</p>
+    </article>
+    <article class="module">
+      <div class="mod-glyph"><span class="g g-8"></span></div>
+      <h3>Cloud Modules</h3><p>AWS · Azure · GCP.</p>
+    </article>
+  </div>
+
+  <!-- Agent Grouping Model -->
+  <div class="grouping">
+    <h3 class="sub-title">Agent Grouping Model — how configuration is layered</h3>
+    <div class="layer-stack">
+      <div class="layer layer-1">
+        <div class="layer-cap mono">DEFAULT</div>
+        <div class="layer-body">Baseline configuration applied to <em>every</em> agent enrolled in the manager.</div>
+      </div>
+      <div class="layer layer-2">
+        <div class="layer-cap mono">GROUP</div>
+        <div class="layer-body">Logical sets — <code class="mono">linux-prod</code>, <code class="mono">windows-dc</code>, <code class="mono">dmz</code>. One agent can belong to many groups.</div>
+      </div>
+      <div class="layer layer-3">
+        <div class="layer-cap mono">AGENT-SPECIFIC</div>
+        <div class="layer-body">Per-host overrides. Used sparingly to keep config maintainable.</div>
+      </div>
+    </div>
+    <div class="callout">
+      <div class="callout-tag mono">PRACTICAL RULE</div>
+      <div>Prefer groups. They give you targeted configuration without per-host drift, and they make rollbacks straightforward.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     INSIDE-THE-ENGINE DIVIDER
+============================================================ -->
+<section class="divider">
+  <div class="divider-inner">
+    <div class="divider-cap mono">INSIDE THE ENGINE</div>
+    <h2 class="divider-title">Detection mechanics</h2>
+    <p class="divider-sub">
+      Log analysis pipeline, decoders, rules, FIM, Active Response, Vulnerability Detection and SCA —
+      the building blocks your team will work with day-to-day.
+    </p>
+  </div>
+</section>
+
+<!-- ============================================================
+     SECTION 07 — LOG ANALYSIS PIPELINE
+============================================================ -->
+<section id="pipeline" class="section">
+  <div class="section-head">
+    <div class="section-tag mono"><span>07</span> Log Analysis Pipeline</div>
+    <h2 class="section-title">From raw event to enriched, MITRE-mapped alert</h2>
+  </div>
+
+  <ol class="pipeline">
+    <li class="pipe-step" data-step="1">
+      <span class="pipe-num mono">01</span>
+      <div class="pipe-name">Collect</div>
+      <div class="pipe-desc">Log Collector ingests raw data — syslog, Windows Event Log, application logs.</div>
+    </li>
+    <li class="pipe-step" data-step="2">
+      <span class="pipe-num mono">02</span>
+      <div class="pipe-name">Pre-decode</div>
+      <div class="pipe-desc">Extracts standard fields: timestamp, hostname, program name.</div>
+    </li>
+    <li class="pipe-step" data-step="3">
+      <span class="pipe-num mono">03</span>
+      <div class="pipe-name">Decode</div>
+      <div class="pipe-desc">Regex breaks the event into structured fields — srcip, user, action.</div>
+    </li>
+    <li class="pipe-step" data-step="4">
+      <span class="pipe-num mono">04</span>
+      <div class="pipe-name">Rule match</div>
+      <div class="pipe-desc">Engine matches decoded fields against 4,000+ rules (Wazuh + custom).</div>
+    </li>
+    <li class="pipe-step" data-step="5">
+      <span class="pipe-num mono">05</span>
+      <div class="pipe-name">Alert</div>
+      <div class="pipe-desc">Severity 0–15, MITRE ATT&CK mapping, structured payload to Indexer.</div>
+    </li>
+  </ol>
+
+  <!-- Animated SSH brute-force example -->
+  <div class="terminal" data-demo="ssh">
+    <div class="term-bar">
+      <div class="term-dots"><span></span><span></span><span></span></div>
+      <div class="term-title mono">demo · SSH brute-force detection</div>
+      <button class="term-replay mono" data-replay="ssh">replay ↻</button>
+    </div>
+    <div class="term-body mono">
+      <div class="term-line" data-l="1"><span class="t-prompt">in</span>  <span class="t-raw">sshd[1234]: Failed password for root from 192.168.1.50 port 22</span></div>
+      <div class="term-line" data-l="2"><span class="t-prompt">→</span>  decoder: <span class="t-key">sshd</span></div>
+      <div class="term-line" data-l="3"><span class="t-prompt">→</span>  rule <span class="t-key">5763</span> (level <span class="t-warn">10</span>): multiple authentication failures</div>
+      <div class="term-line" data-l="4"><span class="t-prompt">→</span>  MITRE: <span class="t-key">T1110</span> Brute Force</div>
+      <div class="term-line" data-l="5"><span class="t-prompt">!</span>  <span class="t-alert">ALERT raised · forwarded to Indexer · severity 10</span></div>
+    </div>
+  </div>
+
+  <div class="callout">
+    <div class="callout-tag mono">TIP</div>
+    <div>Severity ≥ 7 typically goes to the SOC; ≥ 12 wakes someone up.</div>
+  </div>
+</section>
+
+<!-- ============================================================
+     SECTION 08 — DECODERS & RULES
+============================================================ -->
+<section id="decoders" class="section section-tinted">
+  <div class="section-head">
+    <div class="section-tag mono"><span>08</span> Custom Decoders & Rules</div>
+    <h2 class="section-title">How partners typically extend Wazuh for client-specific applications</h2>
+  </div>
+
+  <div class="code-pair">
+    <article class="code-card">
+      <header class="code-head">
+        <span class="code-cap mono">DECODER</span>
+        <span class="code-file mono">local_decoder.xml</span>
+      </header>
+      <pre class="mono"><code><span class="x-tag">&lt;decoder</span> <span class="x-attr">name</span>=<span class="x-str">"myapp"</span><span class="x-tag">&gt;</span>
+  <span class="x-tag">&lt;program_name&gt;</span>myapp<span class="x-tag">&lt;/program_name&gt;</span>
+  <span class="x-tag">&lt;regex&gt;</span>User (\S+) logged in from (\S+)<span class="x-tag">&lt;/regex&gt;</span>
+  <span class="x-tag">&lt;order&gt;</span>user, srcip<span class="x-tag">&lt;/order&gt;</span>
+<span class="x-tag">&lt;/decoder&gt;</span></code></pre>
+    </article>
+
+    <article class="code-card">
+      <header class="code-head">
+        <span class="code-cap mono">RULE</span>
+        <span class="code-file mono">local_rules.xml</span>
+      </header>
+      <pre class="mono"><code><span class="x-tag">&lt;rule</span> <span class="x-attr">id</span>=<span class="x-str">"100001"</span> <span class="x-attr">level</span>=<span class="x-str">"5"</span><span class="x-tag">&gt;</span>
+  <span class="x-tag">&lt;decoded_as&gt;</span>myapp<span class="x-tag">&lt;/decoded_as&gt;</span>
+  <span class="x-tag">&lt;description&gt;</span>User Login via myapp<span class="x-tag">&lt;/description&gt;</span>
+  <span class="x-tag">&lt;group&gt;</span>authentication_success,<span class="x-tag">&lt;/group&gt;</span>
+<span class="x-tag">&lt;/rule&gt;</span></code></pre>
+    </article>
+  </div>
+
+  <article class="code-card code-card-wide">
+    <header class="code-head">
+      <span class="code-cap mono">VALIDATE INTERACTIVELY</span>
+      <span class="code-file mono">wazuh-logtest</span>
+    </header>
+    <pre class="mono"><code><span class="t-prompt">$</span> /var/ossec/bin/wazuh-logtest
+<span class="t-prompt">&gt;</span> myapp: User admin logged in from 10.0.0.5
+<span class="t-prompt">→</span> decoder: <span class="t-key">myapp</span> | rule <span class="t-key">100001</span> (level 5): User Login via myapp</code></pre>
+  </article>
+
+  <div class="bullet-row">
+    <div><span class="b-tick">●</span> Decoders extract structured fields from raw logs</div>
+    <div><span class="b-tick">●</span> Rules define conditions and severity</div>
+    <div><span class="b-tick">●</span> <code class="mono">wazuh-logtest</code> validates without restart</div>
+  </div>
+</section>
+
+<!-- ============================================================
+     SECTION 09 — FIM
+============================================================ -->
+<section id="fim" class="section">
+  <div class="section-head">
+    <div class="section-tag mono"><span>09</span> File Integrity Monitoring</div>
+    <h2 class="section-title">Detect tampering, web-shells and unauthorised changes</h2>
+  </div>
+
+  <div class="fim-grid">
+    <article class="fim-how">
+      <h3>How FIM works</h3>
+      <ul class="checklist">
+        <li>Baseline scan computes <strong>SHA-256 hashes</strong> of monitored files.</li>
+        <li>Periodic <em>or</em> real-time scans detect changes.</li>
+        <li>Compares: content, permissions, owner, size.</li>
+        <li>On change: alert with diff and affected file path.</li>
+      </ul>
+      <header class="code-head" style="margin-top:1.5rem">
+        <span class="code-cap mono">CONFIG</span>
+        <span class="code-file mono">ossec.conf</span>
+      </header>
+      <pre class="mono code-mini"><code><span class="x-tag">&lt;syscheck&gt;</span>
+  <span class="x-tag">&lt;frequency&gt;</span>600<span class="x-tag">&lt;/frequency&gt;</span>
+  <span class="x-tag">&lt;directories</span> <span class="x-attr">realtime</span>=<span class="x-str">"yes"</span><span class="x-tag">&gt;</span>/etc,/usr/bin<span class="x-tag">&lt;/directories&gt;</span>
+  <span class="x-tag">&lt;directories&gt;</span>/var/www/html<span class="x-tag">&lt;/directories&gt;</span>
+<span class="x-tag">&lt;/syscheck&gt;</span></code></pre>
+    </article>
+
+    <!-- Animated webshell demo -->
+    <article class="fim-demo" data-demo="fim">
+      <header class="demo-head">
+        <span class="demo-cap mono">REAL-WORLD EXAMPLE</span>
+        <span class="demo-title">web-shell detection</span>
+        <button class="term-replay mono" data-replay="fim">replay ↻</button>
+      </header>
+      <ol class="demo-steps">
+        <li class="demo-step" data-l="1">
+          <div class="ds-num mono">01</div>
+          <div>Attacker drops <code class="mono">/var/www/html/backdoor.php</code></div>
+        </li>
+        <li class="demo-step" data-l="2">
+          <div class="ds-num mono">02</div>
+          <div>FIM detects new file <strong>in real-time</strong> and raises rule&nbsp;554 (level&nbsp;7)</div>
+        </li>
+        <li class="demo-step" data-l="3">
+          <div class="ds-num mono">03</div>
+          <div>Alert carries SHA-256 hash, owner, timestamp and full path</div>
+        </li>
+        <li class="demo-step" data-l="4">
+          <div class="ds-num mono">04</div>
+          <div>SOC isolates the file immediately — no waiting for the next scan window</div>
+        </li>
+      </ol>
+      <div class="demo-alert mono">
+        <span class="alert-pulse"></span>
+        <span class="alert-text"><span class="t-warn">level 7</span> · rule 554 · 9f1a…d0c4 · /var/www/html/backdoor.php</span>
+      </div>
+    </article>
+  </div>
+</section>
+
+<!-- ============================================================
+     SECTION 10 — ACTIVE RESPONSE
+============================================================ -->
+<section id="response" class="section section-tinted">
+  <div class="section-head">
+    <div class="section-tag mono"><span>10</span> Active Response</div>
+    <h2 class="section-title">Automated containment on the affected endpoint</h2>
+  </div>
+
+  <ol class="ar-chain">
+    <li><span class="ar-num mono">01</span><span class="ar-name">Event</span></li>
+    <li><span class="ar-num mono">02</span><span class="ar-name">Decode</span></li>
+    <li><span class="ar-num mono">03</span><span class="ar-name">Rule match</span></li>
+    <li><span class="ar-num mono">04</span><span class="ar-name">AR trigger</span></li>
+    <li><span class="ar-num mono">05</span><span class="ar-name">Action</span></li>
+  </ol>
+
+  <div class="split">
+    <article class="split-card">
+      <header class="split-head">
+        <div class="split-cap mono">CAPABILITIES</div>
+      </header>
+      <ul class="split-list">
+        <li>Built-in scripts: <code class="mono">firewall-drop</code>, <code class="mono">host-deny</code>, <code class="mono">disable-account</code></li>
+        <li>Custom scripts supported (Bash, Python, PowerShell)</li>
+        <li>Configurable: timeout, specific rules, local vs server-side execution</li>
+        <li>Self-undoing — IP blocks lift automatically when the timeout expires</li>
+      </ul>
+    </article>
+    <article class="split-card">
+      <header class="split-head">
+        <div class="split-cap mono">EXAMPLE — FIREWALL-DROP</div>
+        <div class="split-port mono">ossec.conf</div>
+      </header>
+      <pre class="mono code-mini"><code><span class="x-tag">&lt;active-response&gt;</span>
+  <span class="x-tag">&lt;command&gt;</span>firewall-drop<span class="x-tag">&lt;/command&gt;</span>
+  <span class="x-tag">&lt;location&gt;</span>local<span class="x-tag">&lt;/location&gt;</span>
+  <span class="x-tag">&lt;rules_id&gt;</span>5763<span class="x-tag">&lt;/rules_id&gt;</span>     <span class="x-com">&lt;!-- SSH brute force --&gt;</span>
+  <span class="x-tag">&lt;timeout&gt;</span>600<span class="x-tag">&lt;/timeout&gt;</span>          <span class="x-com">&lt;!-- 10-min block --&gt;</span>
+<span class="x-tag">&lt;/active-response&gt;</span></code></pre>
+    </article>
+  </div>
+</section>
+
+<!-- ============================================================
+     SECTION 11 — VULNERABILITY DETECTION
+============================================================ -->
+<section id="vuln" class="section">
+  <div class="section-head">
+    <div class="section-tag mono"><span>11</span> Vulnerability Detection</div>
+    <h2 class="section-title">Agent-based — no separate network scanner required</h2>
+  </div>
+
+  <ol class="vuln-flow">
+    <li>
+      <div class="v-num mono">01</div>
+      <div class="v-name">Syscollector</div>
+      <div class="v-sub">inventory packages, OS, kernel</div>
+    </li>
+    <li>
+      <div class="v-num mono">02</div>
+      <div class="v-name">CVE match</div>
+      <div class="v-sub">NVD · Canonical · Red Hat · Microsoft</div>
+    </li>
+    <li>
+      <div class="v-num mono">03</div>
+      <div class="v-name">Alert</div>
+      <div class="v-sub">CVE id, CVSS score, fix version</div>
+    </li>
+  </ol>
+
+  <div class="vuln-example">
+    <div class="ve-row">
+      <div class="ve-cap mono">REPORTED</div>
+      <div class="ve-val"><code class="mono">openssl 1.1.1k</code> installed on <code class="mono">web-prod-04</code></div>
+    </div>
+    <div class="ve-row">
+      <div class="ve-cap mono">DETECTED</div>
+      <div class="ve-val"><span class="cve">CVE-2024-5535</span> · <span class="cvss cvss-crit">CVSS 9.1</span> · alert level 13</div>
+    </div>
+    <div class="ve-row">
+      <div class="ve-cap mono">REMEDIATE</div>
+      <div class="ve-val">Upgrade to <code class="mono">openssl 1.1.1w</code> or later</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     SECTION 12 — SCA
+============================================================ -->
+<section id="sca" class="section section-tinted">
+  <div class="section-head">
+    <div class="section-tag mono"><span>12</span> Security Configuration Assessment</div>
+    <h2 class="section-title">Automated checks against hardening benchmarks</h2>
+  </div>
+
+  <div class="sca-grid">
+    <div class="sca-card">
+      <h3>CIS-aligned</h3>
+      <p>Built on CIS Benchmarks plus your own policies (YAML).</p>
+    </div>
+    <div class="sca-card">
+      <h3>Local execution</h3>
+      <p>Agent runs the checks locally and reports pass/fail to the server.</p>
+    </div>
+    <div class="sca-card">
+      <h3>1,000+ checks</h3>
+      <p>Pre-built checks for Linux, Windows and macOS.</p>
+    </div>
+    <div class="sca-card">
+      <h3>Compliance mapping</h3>
+      <p>PCI&nbsp;DSS · HIPAA · NIST&nbsp;800-53 · GDPR.</p>
+    </div>
+  </div>
+
+  <article class="sca-bench">
+    <header class="bench-head">
+      <span class="bench-cap mono">CIS BENCHMARK</span>
+      <span class="bench-name">Ubuntu 22.04 LTS</span>
+    </header>
+    <div class="bench-bar" data-anim="bench">
+      <div class="seg seg-pass" data-pct="82" style="--pct:0%">
+        <span class="seg-label mono"><b>82%</b> pass</span>
+      </div>
+      <div class="seg seg-fail" data-pct="11" style="--pct:0%">
+        <span class="seg-label mono"><b>11%</b> fail</span>
+      </div>
+      <div class="seg seg-na" data-pct="7" style="--pct:0%">
+        <span class="seg-label mono"><b>7%</b> n/a</span>
+      </div>
+    </div>
+    <div class="bench-failed mono">
+      <span class="bench-fail-cap">Failed checks include →</span>
+      <span class="chip">disable IPv4 redirects</span>
+      <span class="chip">audit log permissions</span>
+      <span class="chip">password reuse policy</span>
+    </div>
+  </article>
+</section>
+
+<!-- ============================================================
+     SECTION 13 — COMMUNICATION & PORTS
+============================================================ -->
+<section id="ports" class="section">
+  <div class="section-head">
+    <div class="section-tag mono"><span>13</span> Communication & Ports</div>
+    <h2 class="section-title">All inter-component traffic is encrypted (AES-256 / TLS)</h2>
+  </div>
+
+  <div class="ports-table" role="table">
+    <div class="ports-row ports-head" role="row">
+      <div class="mono">Source</div>
+      <div class="mono">Destination</div>
+      <div class="mono">Port</div>
+      <div class="mono">Protocol</div>
+      <div class="mono">Purpose</div>
+    </div>
+    <div class="ports-row" role="row">
+      <div>Agent</div><div>Manager</div>
+      <div class="port-cell mono">1514/TCP</div>
+      <div><span class="proto proto-aes">AES-256</span></div>
+      <div>Event ingestion (default)</div>
+    </div>
+    <div class="ports-row" role="row">
+      <div>Agent</div><div>Manager</div>
+      <div class="port-cell mono">1515/TCP</div>
+      <div><span class="proto proto-tls">TLS</span></div>
+      <div>Agent enrollment / authd</div>
+    </div>
+    <div class="ports-row" role="row">
+      <div>Manager</div><div>Manager</div>
+      <div class="port-cell mono">1516/TCP</div>
+      <div><span class="proto proto-aes">AES-256</span></div>
+      <div>Cluster daemon</div>
+    </div>
+    <div class="ports-row" role="row">
+      <div>Manager</div><div>Indexer</div>
+      <div class="port-cell mono">9200/TCP</div>
+      <div><span class="proto proto-tls">TLS</span></div>
+      <div>Filebeat alert ingest</div>
+    </div>
+    <div class="ports-row" role="row">
+      <div>Indexer</div><div>Indexer</div>
+      <div class="port-cell mono">9300–9400</div>
+      <div><span class="proto proto-tls">TLS</span></div>
+      <div>Cluster transport</div>
+    </div>
+    <div class="ports-row" role="row">
+      <div>Dashboard</div><div>Manager</div>
+      <div class="port-cell mono">55000/TCP</div>
+      <div><span class="proto proto-tls">TLS</span></div>
+      <div>REST API (control plane)</div>
+    </div>
+    <div class="ports-row" role="row">
+      <div>User</div><div>Dashboard</div>
+      <div class="port-cell mono">443/TCP</div>
+      <div><span class="proto proto-https">HTTPS</span></div>
+      <div>Web interface</div>
+    </div>
+  </div>
+
+  <div class="callout callout-warn">
+    <div class="callout-tag mono">RULE OF THUMB</div>
+    <div>Open only what's needed per direction. Place the dashboard behind your reverse proxy or VPN — never expose 55000 to the internet.</div>
+  </div>
+</section>
+
+<!-- ============================================================
+     SECTION 14 — DEPLOYMENT & HARDWARE
+============================================================ -->
+<section id="deploy" class="section section-tinted">
+  <div class="section-head">
+    <div class="section-tag mono"><span>14</span> Deployment & Hardware</div>
+    <h2 class="section-title">Pick the model that fits the customer's scale</h2>
+  </div>
+
+  <div class="deploy-models">
+    <article class="dep-model">
+      <div class="dep-cap mono">01</div>
+      <h3>All-in-One</h3>
+      <p>All components on one server. Lab and small environments.</p>
+    </article>
+    <article class="dep-model">
+      <div class="dep-cap mono">02</div>
+      <h3>Distributed</h3>
+      <p>Components on dedicated servers. Flexibility and scale.</p>
+    </article>
+    <article class="dep-model">
+      <div class="dep-cap mono">03</div>
+      <h3>Docker / Kubernetes</h3>
+      <p>Container-based deployment. Cattle, not pets.</p>
+    </article>
+    <article class="dep-model">
+      <div class="dep-cap mono">04</div>
+      <h3>Wazuh Cloud (SaaS)</h3>
+      <p>Managed service. No infrastructure of your own.</p>
+    </article>
+  </div>
+
+  <div class="sizing">
+    <header class="sizing-head">
+      <h3>All-in-One sizing — 90-day retention</h3>
+    </header>
+    <div class="sizing-table">
+      <div class="sz-row sz-head">
+        <div class="mono">Agents</div>
+        <div class="mono">EPS</div>
+        <div class="mono">CPU</div>
+        <div class="mono">RAM</div>
+        <div class="mono">Storage (90 d)</div>
+      </div>
+      <div class="sz-row">
+        <div>≤ 25</div><div>100</div><div>4 vCPU</div><div>8 GB</div><div>50 GB</div>
+      </div>
+      <div class="sz-row">
+        <div>≤ 100</div><div>500</div><div>8 vCPU</div><div>16 GB</div><div>200 GB</div>
+      </div>
+      <div class="sz-row">
+        <div>≤ 500</div><div>2,500</div><div>16 vCPU</div><div>32 GB</div><div>1 TB</div>
+      </div>
+      <div class="sz-row sz-row-warn">
+        <div>≤ 1,000</div><div>5,000</div><div>16+ vCPU</div><div>64 GB</div><div>2 TB → distribute</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     SECTION 15 — INSTALLATION
+============================================================ -->
+<section id="install" class="section">
+  <div class="section-head">
+    <div class="section-tag mono"><span>15</span> Installation</div>
+    <h2 class="section-title">All-in-one in three commands</h2>
+    <p class="section-lede">
+      Partner-grade installs need more, but this is the fastest path to a working environment.
+    </p>
+  </div>
+
+  <article class="install-card">
+    <header class="install-head">
+      <span class="install-cap mono">ALL-IN-ONE INSTALLER</span>
+      <span class="install-os mono">ubuntu / debian</span>
+    </header>
+    <pre class="install-code mono" data-anim="type"><code><span class="t-prompt">$</span> sudo apt update &amp;&amp; sudo apt upgrade -y
+<span class="t-prompt">$</span> curl -sO https://packages.wazuh.com/4.12/wazuh-install.sh
+<span class="t-prompt">$</span> sudo bash ./wazuh-install.sh -a</code></pre>
+  </article>
+
+  <div class="install-grid">
+    <article class="install-block">
+      <h3>Configuration paths</h3>
+      <ul class="path-list mono">
+        <li><span class="p-path">/var/ossec/etc/ossec.conf</span><span class="p-note">main XML</span></li>
+        <li><span class="p-path">/var/ossec/etc/rules/</span><span class="p-note">rules</span></li>
+        <li><span class="p-path">/var/ossec/etc/decoders/</span><span class="p-note">decoders</span></li>
+      </ul>
+      <p class="install-note">Identical structure on Manager + Agent.</p>
+    </article>
+
+    <article class="install-block">
+      <h3>After installation</h3>
+      <ul class="checklist">
+        <li>Dashboard at <code class="mono">https://&lt;IP&gt;:443</code></li>
+        <li>Login: <code class="mono">admin</code> + generated password</li>
+        <li>Save <code class="mono">wazuh-install-files.tar</code> in your vault</li>
+        <li>Set the timezone (<code class="mono">timedatectl set-timezone</code>)</li>
+      </ul>
+    </article>
+
+    <article class="install-block">
+      <h3>Agent deployment (Linux)</h3>
+      <pre class="mono code-mini"><code><span class="t-prompt">$</span> curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH \
+    | gpg --import
+<span class="t-prompt">$</span> apt install wazuh-agent</code></pre>
+      <p class="install-note">Use deployment variables to auto-enrol.</p>
+    </article>
+  </div>
+</section>
+
+<!-- ============================================================
+     SECTION 16 — SUMMARY + CTA
+============================================================ -->
+<section id="summary" class="section section-final">
+  <div class="section-head">
+    <div class="section-tag mono"><span>16</span> Summary</div>
+    <h2 class="section-title">What to take away</h2>
+  </div>
+
+  <ol class="summary-list">
+    <li><span class="s-num mono">01</span><div>Wazuh — free, open-source XDR + SIEM platform.</div></li>
+    <li><span class="s-num mono">02</span><div>Four core components: Agent · Server · Indexer · Dashboard.</div></li>
+    <li><span class="s-num mono">03</span><div>Analysis pipeline: Decoder → Rules → Alerts (4,000+ rules out of the box).</div></li>
+    <li><span class="s-num mono">04</span><div>Modules: FIM, Active Response, Vulnerability Detection, SCA, Cloud, Containers.</div></li>
+    <li><span class="s-num mono">05</span><div>Encrypted communication (AES-256 / TLS) on every link.</div></li>
+    <li><span class="s-num mono">06</span><div>Compliance built in: PCI&nbsp;DSS, GDPR, HIPAA, NIST&nbsp;800-53, CIS.</div></li>
+  </ol>
+
+  <!-- T-Alpha card -->
+  <article class="talpha">
+    <header class="talpha-head">
+      <img class="talpha-logo" src="T-Alpha_nb.svg" alt="T-Alpha GmbH" />
+      <div>
+        <div class="talpha-cap mono">WHO YOU'RE WORKING WITH</div>
+        <h3>Den Angreifern einen Schritt voraus.</h3>
+      </div>
+    </header>
+    <p class="talpha-lede">
+      Independent, owner-led Swiss cybersecurity practice based in Buchs SG. Open-source first.
+      Hands-on Blue Team and Red Team work — no vendor lock-in, no management overhead.
+      <em>Wir verkaufen keine Hardware und keine Software — die Ergebnisse sind absolut neutral.</em>
+    </p>
+    <div class="talpha-areas">
+      <div class="ta-area">
+        <div class="ta-cap mono">BLUE TEAM</div>
+        <div>Wazuh deployments, custom decoders & rules, SIEM operations</div>
+      </div>
+      <div class="ta-area">
+        <div class="ta-cap mono">RED TEAM</div>
+        <div>Penetration tests, vulnerability assessments, security checks</div>
+      </div>
+      <div class="ta-area">
+        <div class="ta-cap mono">CONSULTING</div>
+        <div>Security concepts, awareness trainings, automation-first</div>
+      </div>
+    </div>
+
+    <div class="talpha-team">
+      <div class="team-cap mono">FOUNDERS</div>
+      <div class="team-row">
+        <div class="team-member">
+          <div class="member-name">David Dutler</div>
+          <div class="member-role mono">CEO &amp; CO-FOUNDER</div>
+        </div>
+        <div class="team-member">
+          <div class="member-name">Ivan Stricker</div>
+          <div class="member-role mono">CTO &amp; CO-FOUNDER</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="talpha-next">
+      <div class="next-cap mono">NEXT STEPS</div>
+      <ul class="next-list">
+        <li><span class="arrow">→</span> Walk through a live Wazuh environment together</li>
+        <li><span class="arrow">→</span> Pick one customer scenario to model end-to-end</li>
+        <li><span class="arrow">→</span> Define what each side brings — tooling, support, escalation</li>
+      </ul>
+    </div>
+
+    <footer class="talpha-foot">
+      <div class="foot-block">
+        <div class="fb-cap mono">T-ALPHA GMBH</div>
+        <div>Langäulistrasse 37<br/>9470 Buchs SG · Schweiz</div>
+      </div>
+      <div class="foot-block">
+        <div class="fb-cap mono">KONTAKT</div>
+        <div><a href="tel:+41815116910">+41 81 511 69 10</a><br/><a href="mailto:info@t-alpha.ch">info@t-alpha.ch</a></div>
+      </div>
+      <div class="foot-block">
+        <div class="fb-cap mono">WEB</div>
+        <div><a href="https://www.t-alpha.ch" target="_blank" rel="noopener">www.t-alpha.ch&nbsp;↗</a><br/><a href="https://github.com/tagmbh" target="_blank" rel="noopener">github.com/tagmbh&nbsp;↗</a></div>
+      </div>
+    </footer>
+  </article>
+</section>
+
+<footer class="page-foot">
+  <div class="foot-inner">
+    <div class="mono">T-ALPHA · WAZUH TECHNICAL INTRODUCTION · v4.12 · MAY 2026</div>
+    <div class="foot-links mono">
+      <a href="https://wazuh.com" target="_blank" rel="noopener">wazuh.com ↗</a>
+      <a href="#top">back to top ↑</a>
+    </div>
+  </div>
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>
