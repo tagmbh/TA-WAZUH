@@ -1,0 +1,2 @@
+# TA-WAZUH
+Wazuh Introduction
